@@ -1,0 +1,9 @@
+#!/usr/bin/with-contenv bash
+
+# disable the second mjpg-streamer service if not enabled
+if [ -z ${SECOND_CAMERA_DEV+x} ]; then
+  printf '\n\n\n\n env var SECOND_CAMERA_DEV is not set\n Deleting "second-streamer" service ...\n\n\n\n' # for developing purposes - can be removed
+  rm -rf /etc/services.d/second-streamer
+else
+  printf '\n\n\n\n env var SECOND_CAMERA_DEV is set to "$SECOND_CAMERA_DEV"\n This will start "second-streamer" service ... \n\n\n\n' # for developing purposes - can be removed
+fi
