@@ -1,0 +1,51 @@
+version: '2.4'
+
+services:
+  octoprint:
+    # image: octoprint/octoprint # official image
+    image: pkaradzhov/octoprint # my image, that supports second camera device
+    container_name: octoprint-ender3 # change to your desire or delete the line
+    restart: unless-stopped
+    ports:
+      - 80:80
+      # - 8080:8080 # for testing purposes - comment or remove when done
+      # - 8081:8081 # for testing purposes - comment or remove when done
+      # - 8082:8082 # for testing purposes - comment or remove when done
+      # - 5000:5000 # for testing purposes - comment or remove when done
+    devices:
+     - /dev/ttyUSB0:/dev/ttyUSB0
+     - /dev/video0:/dev/video0 # my first camera device - check yours
+     - /dev/video2:/dev/video2 # my second camera device - check yours
+    volumes:
+     - octoprint:/octoprint
+
+    # uncomment the lines below to ensure camera streaming is enabled when you add a video device
+    environment:
+     - ENABLE_MJPG_STREAMER=true      # enables the camera streaming
+     - CAMERA_DEV=/dev/video0         # point to the first camera device
+    #  - MJPG_STREAMER_INPUT='-y -n -r 640x480' # default values
+    #  - MJPG_STREAMER_INPUT='-y -n -r 1280x720' # preferable values
+     - MJPG_STREAMER_INPUT=-y -n -r FHD # FullHD resolution requested - will fallback if not supported
+     - SECOND_CAMERA_DEV=/dev/video2  # point to the second camera device if needed
+
+  ####
+  # uncomment if you wish to edit the configuration files of octoprint
+  # refer to docs on configuration editing for more information
+  ####
+
+  #config-editor:
+  #  image: linuxserver/code-server
+  #  ports:
+  #    - 8443:8443
+  #  depends_on:
+  #    - octoprint
+  #  restart: unless-stopped
+  #  environment:
+  #    - PUID=0
+  #    - PGID=0
+  #    - TZ=America/Chicago
+  #  volumes:
+  #    - octoprint:/octoprint
+
+volumes:
+  octoprint:
