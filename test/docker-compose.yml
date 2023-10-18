@@ -1,0 +1,32 @@
+version: '2.4'
+
+services:
+  octoprint:
+    build: 
+      context: ../
+      args:
+        octoprint_ref: 1.5.2
+    image: octoprint/octoprint:test
+    ports:
+      - 53333:80
+    volumes:
+      - octoprint:/octoprint
+    environment:
+      - AUTOMIGRATE=true
+
+  config-editor:
+    image: linuxserver/code-server
+    ports:
+      - 8443:8443
+    depends_on:
+      - octoprint
+    restart: unless-stopped
+    environment:
+      - PUID=0
+      - GUID=0
+      - TZ=America/Chicago
+    volumes:
+      - octoprint:/octoprint
+
+volumes:
+  octoprint:
