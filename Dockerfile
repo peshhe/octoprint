@@ -3,8 +3,11 @@ ARG PYTHON_BASE_IMAGE=3.10-slim-bullseye
 FROM ubuntu AS s6build
 ARG S6_RELEASE
 ENV S6_VERSION ${S6_RELEASE:-v2.1.0.0}
-RUN apt-get update && apt-get install -y curl
-RUN echo "$(dpkg --print-architecture)"
+RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -y curl ca-certificates && \
+  apt-get autoclean && apt-get autoremove && apt-get purge \
+  # && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
+  && rm -rf /var/lib/apt/lists/* \
+  && echo "$(dpkg --print-architecture)"
 WORKDIR /tmp
 RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
   && case "${dpkgArch##*-}" in \
@@ -19,11 +22,10 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
 
 
 FROM python:${PYTHON_BASE_IMAGE} AS build
-
 ARG octoprint_ref
 ENV octoprint_ref ${octoprint_ref:-master}
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -y \
   avrdude \
   build-essential \
   cmake \
@@ -45,41 +47,40 @@ RUN apt-get update && apt-get install -y \
   v4l-utils \
   xz-utils \
   zlib1g-dev \
-  x265
+  x265 \
+  && apt-get autoclean && apt-get autoremove && apt-get purge \
+  && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
+  && rm -rf /var/lib/apt/lists/*
 
 # unpack s6
 COPY --from=s6build /tmp /tmp
 RUN s6tar=$(find /tmp -name "s6-overlay-*.tar.gz") \
-  && tar xzf $s6tar -C / 
+  && tar xzf $s6tar -C / && rm -f $s6tar
 
 # Install octoprint
 RUN	curl -fsSLO --compressed --retry 3 --retry-delay 10 \
   https://github.com/OctoPrint/OctoPrint/archive/${octoprint_ref}.tar.gz \
 	&& mkdir -p /opt/octoprint \
-  && tar xzf ${octoprint_ref}.tar.gz --strip-components 1 -C /opt/octoprint --no-same-owner
-
-WORKDIR /opt/octoprint
-RUN pip install .
-RUN mkdir -p /octoprint/octoprint /octoprint/plugins
+  && tar xzf ${octoprint_ref}.tar.gz --strip-components 1 -C /opt/octoprint --no-same-owner \
+  && rm -f ${octoprint_ref}.tar.gz && cd /opt/octoprint \
+  && printf '[install]\ncompile = no' > /etc/pip.conf \
+  && pip install --no-cache-dir . && mkdir -p /octoprint/octoprint /octoprint/plugins
 
 # Install mjpg-streamer
 RUN curl -fsSLO --compressed --retry 3 --retry-delay 10 \
   https://github.com/jacksonliam/mjpg-streamer/archive/master.tar.gz \
   && mkdir /mjpg \
-  && tar xzf master.tar.gz -C /mjpg
-
-
-WORKDIR /mjpg/mjpg-streamer-master/mjpg-streamer-experimental
-RUN make
-RUN make install
+  && tar xzf master.tar.gz -C /mjpg && rm -f /master.tar.gz \
+  && cd /mjpg/mjpg-streamer-master/mjpg-streamer-experimental \
+  && make && make install && make clean
 
 # Copy services into s6 servicedir and set default ENV vars
 COPY root /
-ENV CAMERA_DEV /dev/video0
-ENV MJPG_STREAMER_INPUT -n -r 640x480
-ENV PIP_USER true
-ENV PYTHONUSERBASE /octoprint/plugins
-ENV PATH "${PYTHONUSERBASE}/bin:${PATH}"
+ENV CAMERA_DEV=/dev/video0 \
+    MJPG_STREAMER_INPUT="-n -r 640x480" \
+    PIP_USER=true \
+    PYTHONUSERBASE=/octoprint/plugins \
+    PATH="${PYTHONUSERBASE}/bin:${PATH}"
 # set WORKDIR 
 WORKDIR /octoprint
 

@@ -3,6 +3,16 @@ accessControl:
 server:
   commands:
     serverRestartCommand: s6-svc -r /var/run/s6/services/octoprint
+temperature:
+  profiles:
+  - bed: 100
+    chamber: null
+    extruder: 210
+    name: ABS
+  - bed: 60
+    chamber: null
+    extruder: 195
+    name: PLA
 webcam:
   ffmpeg: /usr/bin/ffmpeg
   snapshot: http://localhost:8080/?action=snapshot
